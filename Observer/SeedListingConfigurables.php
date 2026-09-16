@@ -1,0 +1,65 @@
+<?php
+/**
+ * @package   Kingletas_CatalogBatch
+ * @copyright Copyright (c) the Kingletas modules authors
+ * @license   OSL-3.0 https://opensource.org/licenses/OSL-3.0
+ */
+
+declare(strict_types=1);
+
+namespace Kingletas\CatalogBatch\Observer;
+
+use Kingletas\CatalogBatch\Model\AttributeCollectionSeeder;
+use Kingletas\CatalogBatch\Model\Config;
+use Magento\Catalog\Model\Product;
+use Magento\Catalog\Model\ResourceModel\Product\Collection;
+use Magento\Framework\DataObject;
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
+use Magento\Store\Model\StoreManagerInterface;
+
+/**
+ * Gives every configurable in a just-loaded listing the attribute rows the page is about to ask each of them for.
+ */
+class SeedListingConfigurables implements ObserverInterface
+{
+    public function __construct(
+        private readonly Config $config,
+        private readonly AttributeCollectionSeeder $seeder,
+        private readonly StoreManagerInterface $storeManager
+    ) {
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function execute(Observer $observer): void
+    {
+        $collection = $observer->getEvent()->getData('collection');
+
+        if (!$collection instanceof Collection) {
+            return;
+        }
+
+        $store = $this->storeManager->getStore();
+
+        if (!$this->config->isEnabled((int) $store->getId())) {
+            return;
+        }
+
+        $this->seeder->seed($this->products($collection), (int) $store->getId(), (int) $store->getWebsiteId());
+    }
+
+    /**
+     * A collection is declared to hold data objects, and only a product has a type and a link field.
+     *
+     * @return Product[]
+     */
+    private function products(Collection $collection): array
+    {
+        return array_values(array_filter(
+            $collection->getItems(),
+            static fn (DataObject $item): bool => $item instanceof Product
+        ));
+    }
+}
