@@ -6,7 +6,10 @@ All notable changes to this module are documented here. The format follows [Keep
 
 ### Added
 
-- First release. A category page asks for every configurable product's super attributes, store labels and option rows once instead of once per product, by seeding the collection Magento checks for before it queries.
-- Two observers, in the frontend area only: one for a loaded product listing, one for the product a product page is showing.
-- A per store view switch, off on install, and a batch size so one query never grows without a bound.
-- **Known: it seeds when a collection loads rather than when a product is first asked**, so a page carrying more than one collection pays for products nobody asks about. A configurable product page costs 113 database statements against Magento's 109 for that reason.
+- First release. A category page asks for every configurable product's super attributes, store labels and option rows once instead of once per product, by filling in the collection Magento checks for before it queries.
+- Two observers and a before plugin, in the frontend area only. The observers note the configurables each collection loads, and the plugin answers a whole group the first time Magento asks about one of them.
+- A per store view switch, off on install, and a batch size so one query can't grow without a bound.
+
+### Changed
+
+- Attribute collections are now built when the page first asks about a configurable, not when the collection loads. A product page no longer pays for its related products block: it cost 113 statements against Magento's 109, and now costs 109.

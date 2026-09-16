@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- Only the storefront asks for these, and only when a page actually renders a configurable's swatches. -->
+    <type name="Magento\ConfigurableProduct\Model\Product\Type\Configurable">
+        <plugin name="kingletas_catalog_batch_seed_attributes_on_demand"
+                type="Kingletas\CatalogBatch\Plugin\Configurable\SeedAttributesOnDemand"/>
+    </type>
+</config>

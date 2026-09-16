@@ -9,8 +9,8 @@ declare(strict_types=1);
 
 namespace Kingletas\CatalogBatch\Test\Unit\Observer;
 
-use Kingletas\CatalogBatch\Model\AttributeCollectionSeeder;
 use Kingletas\CatalogBatch\Model\Config;
+use Kingletas\CatalogBatch\Model\PendingConfigurables;
 use Kingletas\CatalogBatch\Observer\SeedListingConfigurables;
 use Kingletas\CatalogBatch\Observer\SeedViewedConfigurable;
 use Magento\Catalog\Model\Product;
@@ -24,27 +24,37 @@ use PHPUnit\Framework\TestCase;
 
 class SeedObserversTest extends TestCase
 {
-    /** @var array<int, array{0: int, 1: int, 2: int}> Products, store and website of each seeding. */
-    private array $seedings = [];
+    private PendingConfigurables $pending;
 
-    public function testAListingIsSeededWithItsOwnStoreAndWebsite(): void
+    protected function setUp(): void
+    {
+        $this->pending = new PendingConfigurables();
+    }
+
+    /**
+     * Nothing is queried when a collection loads; the configurables wait until the page asks about one.
+     */
+    public function testAListingIsRememberedWithItsOwnStoreAndWebsite(): void
     {
         $collection = $this->createMock(Collection::class);
-        $collection->method('getItems')->willReturn([1 => $this->createMock(Product::class)]);
+        $collection->method('getItems')->willReturn([1 => $this->configurable(7)]);
 
         $this->listingObserver()->execute($this->observer(['collection' => $collection]));
 
-        $this->assertSame([[1, 3, 4]], $this->seedings);
+        $group = $this->pending->takeGroupOf(7);
+        $this->assertNotNull($group);
+        $this->assertSame([7], array_keys($group->products));
+        $this->assertSame([3, 4], [$group->storeId, $group->websiteId]);
     }
 
     public function testTheSwitchBeingOffMeansNothingIsAsked(): void
     {
         $collection = $this->createMock(Collection::class);
-        $collection->method('getItems')->willReturn([1 => $this->createMock(Product::class)]);
+        $collection->method('getItems')->willReturn([1 => $this->configurable(7)]);
 
         $this->listingObserver(false)->execute($this->observer(['collection' => $collection]));
 
-        $this->assertSame([], $this->seedings);
+        $this->assertNull($this->pending->takeGroupOf(7));
     }
 
     /**
@@ -54,21 +64,21 @@ class SeedObserversTest extends TestCase
     {
         $this->listingObserver()->execute($this->observer(['collection' => new DataObject()]));
 
-        $this->assertSame([], $this->seedings);
+        $this->assertNull($this->pending->takeGroupOf(7));
     }
 
-    public function testAProductPageSeedsTheOneProductItIsShowing(): void
+    public function testAProductPageRemembersTheOneProductItIsShowing(): void
     {
-        $this->viewObserver()->execute($this->observer(['product' => $this->createMock(Product::class)]));
+        $this->viewObserver()->execute($this->observer(['product' => $this->configurable(7)]));
 
-        $this->assertSame([[1, 3, 4]], $this->seedings);
+        $this->assertNotNull($this->pending->takeGroupOf(7));
     }
 
     public function testAProductViewWithNoProductIsIgnored(): void
     {
         $this->viewObserver()->execute($this->observer([]));
 
-        $this->assertSame([], $this->seedings);
+        $this->assertNull($this->pending->takeGroupOf(7));
     }
 
     /**
@@ -81,12 +91,12 @@ class SeedObserversTest extends TestCase
 
     private function listingObserver(bool $enabled = true): SeedListingConfigurables
     {
-        return new SeedListingConfigurables($this->config($enabled), $this->seeder(), $this->stores());
+        return new SeedListingConfigurables($this->config($enabled), $this->pending, $this->stores());
     }
 
     private function viewObserver(bool $enabled = true): SeedViewedConfigurable
     {
-        return new SeedViewedConfigurable($this->config($enabled), $this->seeder(), $this->stores());
+        return new SeedViewedConfigurable($this->config($enabled), $this->pending, $this->stores());
     }
 
     private function config(bool $enabled): Config
@@ -97,18 +107,14 @@ class SeedObserversTest extends TestCase
         return $config;
     }
 
-    private function seeder(): AttributeCollectionSeeder
+    private function configurable(int $id): Product
     {
-        $seeder = $this->createMock(AttributeCollectionSeeder::class);
-        $seeder->method('seed')->willReturnCallback(
-            function (array $products, int $storeId, int $websiteId): int {
-                $this->seedings[] = [count($products), $storeId, $websiteId];
+        $product = $this->createMock(Product::class);
+        $product->method('getId')->willReturn($id);
+        $product->method('getTypeId')->willReturn('configurable');
+        $product->method('hasData')->willReturn(false);
 
-                return count($products);
-            }
-        );
-
-        return $seeder;
+        return $product;
     }
 
     private function stores(): StoreManagerInterface

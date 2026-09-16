@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Kingletas\CatalogBatch\Observer;
 
-use Kingletas\CatalogBatch\Model\AttributeCollectionSeeder;
+use Kingletas\CatalogBatch\Model\PendingConfigurables;
 use Kingletas\CatalogBatch\Model\Config;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ResourceModel\Product\Collection;
@@ -19,13 +19,13 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
 
 /**
- * Gives every configurable in a just-loaded listing the attribute rows the page is about to ask each of them for.
+ * Notes the configurables a just-loaded collection holds, so they can be answered together if the page asks about one.
  */
 class SeedListingConfigurables implements ObserverInterface
 {
     public function __construct(
         private readonly Config $config,
-        private readonly AttributeCollectionSeeder $seeder,
+        private readonly PendingConfigurables $pending,
         private readonly StoreManagerInterface $storeManager
     ) {
     }
@@ -47,7 +47,7 @@ class SeedListingConfigurables implements ObserverInterface
             return;
         }
 
-        $this->seeder->seed($this->products($collection), (int) $store->getId(), (int) $store->getWebsiteId());
+        $this->pending->remember($this->products($collection), (int) $store->getId(), (int) $store->getWebsiteId());
     }
 
     /**

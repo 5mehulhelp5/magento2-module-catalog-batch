@@ -20,7 +20,7 @@ use Magento\Eav\Model\Config as EavConfig;
  */
 class AttributeCollectionSeeder
 {
-    private const string CONFIGURABLE_ATTRIBUTES = '_cache_instance_configurable_attributes';
+    public const string CONFIGURABLE_ATTRIBUTES = '_cache_instance_configurable_attributes';
 
     public function __construct(
         private readonly SuperAttributeRows $superAttributes,

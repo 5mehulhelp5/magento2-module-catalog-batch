@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace Kingletas\CatalogBatch\Observer;
 
-use Kingletas\CatalogBatch\Model\AttributeCollectionSeeder;
+use Kingletas\CatalogBatch\Model\PendingConfigurables;
 use Kingletas\CatalogBatch\Model\Config;
 use Magento\Catalog\Model\Product;
 use Magento\Framework\Event\Observer;
@@ -17,13 +17,13 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
 
 /**
- * A product page has one configurable, so this trades its three queries for two rather than for none.
+ * Notes the configurable a product page is showing, so it is answered in one batch when the page asks about it.
  */
 class SeedViewedConfigurable implements ObserverInterface
 {
     public function __construct(
         private readonly Config $config,
-        private readonly AttributeCollectionSeeder $seeder,
+        private readonly PendingConfigurables $pending,
         private readonly StoreManagerInterface $storeManager
     ) {
     }
@@ -45,6 +45,6 @@ class SeedViewedConfigurable implements ObserverInterface
             return;
         }
 
-        $this->seeder->seed([$product], (int) $store->getId(), (int) $store->getWebsiteId());
+        $this->pending->remember([$product], (int) $store->getId(), (int) $store->getWebsiteId());
     }
 }

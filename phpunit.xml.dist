@@ -32,6 +32,7 @@
         <include>
             <directory suffix=".php">Model</directory>
             <directory suffix=".php">Observer</directory>
+            <directory suffix=".php">Plugin</directory>
         </include>
     </source>
 </phpunit>

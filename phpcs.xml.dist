@@ -17,6 +17,7 @@
 
     <file>Model</file>
     <file>Observer</file>
+    <file>Plugin</file>
     <file>Test</file>
     <file>registration.php</file>
 
