@@ -203,6 +203,7 @@ Turn the switch off for that store view and flush the cache first. The page goes
 | What you see | Most likely cause |
 | --- | --- |
 | The count doesn't change | The switch is on at a different scope from the store view you're requesting, the cache wasn't flushed, or the page has no configurable products |
+| The count doesn't change, and `kingletas:catalog-batch:status` shows products answered first by another module | `kingletas/module-catalog-index` is on too and answered them from its documents. That's the intended order; this module answers only what it had no document for |
 | The count changes by a different amount each run | Something else is using the database. Check that cron is stopped and nobody else is on the store |
 | The count is the same on a product page | That's expected. The module breaks even on a product page |
 | Swatches offer an option that's out of stock | The store matches the case in [Step 4](#step-4-decide-where-to-leave-it-off). Leave the switch off there |

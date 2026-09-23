@@ -43,6 +43,12 @@ Magento sometimes asks with a different object for the same product. The plugin 
 
 It's a before plugin, not an around plugin. It always returns null, which tells Magento to keep its own arguments, and Magento then finds the collection already in place.
 
+## When another module answers first
+
+`kingletas/module-catalog-index` has a before plugin on the same call, and it's sorted first: `sortOrder` 10 against this module's 20. When Magento asks about a product the index module already answered from a document, this module finds the collection in place. If it was still holding that product, it removes it from its group and counts it as answered first by another module. A group whose products were all answered that way is dropped without a query.
+
+A group is answered together, so once one of its products without a document is asked about, this module's query covers the others in the group that are still waiting, including any the index module could have answered. The index module counts those as `preempted` in its own status. The query was running anyway for the product with no document.
+
 ## Why the collection has to be a real one
 
 A plain array would be simpler, and it breaks a real page. `Magento\ConfigurableProduct\Pricing\Price\ConfigurableRegularPrice` calls `$attributes->getItems()` on the result, which is a collection method, and it does so while rendering prices on a listing. So the module builds a subclass of Magento's own `Attribute\Collection` with its items already added and its loaded flag set.
@@ -55,9 +61,12 @@ A plain array would be simpler, and it breaks a real page. `Magento\Configurable
 |---|---|---|
 | `catalog_product_collection_load_after` | event | notes every configurable in a listing, search result, widget or related products block |
 | `catalog_controller_product_view` | event | notes the product a product page is showing |
-| `Configurable::getConfigurableAttributes()` | before plugin | answers a product's whole group the first time Magento asks about one of them |
+| `Configurable::getConfigurableAttributes()` | before plugin, `sortOrder` 20 | answers a product's whole group the first time Magento asks about one of them |
+| `controller_front_send_response_before` | event | writes the request's answer counts for `kingletas:catalog-batch:status` |
+| `Configurable` argument `productCollectionFactory` | DI argument | builds each child collection as `CountedChildCollection`, which can be told its size |
+| `Configurable` argument `salableProcessor` | DI argument | applies Magento's salable filter, then hands a counted child collection the page's count for its one parent |
 
-All three are registered in the **frontend** area only, so the admin and the API aren't touched. The observers note nothing while the switch is off for the store view, so the plugin has nothing to answer.
+All six are registered in the **frontend** area only, so the admin and the API aren't touched. The observers note nothing while the switch is off for the store view, so the plugin has nothing to answer.
 
 ## What it reproduces, exactly
 
@@ -91,3 +100,19 @@ A configurable product page costs 109 statements with the module and 109 without
 The number that mattered more came from a load test. Browse traffic arrived at a fixed 420 requests a minute, all of them cache misses. **Checkout went from 37 orders a minute to 47**, and order p95 fell from 3.8 s to 1.6 s. That run also had a salable-child count answered once per page, which isn't part of this module yet. Browse and checkout compete for PHP workers, and a page that finishes sooner frees one sooner.
 
 **Every number here comes from one laptop and one store.** A measurement is a fact about the machine that produced it.
+
+## The salable child count
+
+`Configurable::isSalable()` builds a child collection for one product, filters it to a store, runs it through the salable processor and asks its size: one `COUNT` per configurable. With **Batch The Salable Child Count** on, the listing observer notes each loaded collection's configurables and queries nothing. The first time Magento counts one of them, the salable processor counts that product's whole listing in two queries, remembers each count per store, and tells the collection its size, so `getSize()` runs no query. Every other product in that listing is then answered the same way.
+
+Nothing else changes. The type model's own per-SKU cache, both salability events and the parent's status check all run as before, because the seam is below them. A collection that is loaded rather than counted still loads from the database with the same filters. A collection with no store named, more than one parent, or a parent no listing loaded is counted by Magento. A listing nobody asks about costs nothing.
+
+Measured on Adobe Commerce 2.4.8-p2 in production mode, with the page cache off and the switch flipped off and on in 20 alternating rounds:
+
+| Page | MySQL statements, off to on | Wall time, median off to on |
+| --- | --- | --- |
+| First page of a category holding 25 configurables | 73 to 63 | 354 ms to 329 ms |
+| First page of a category holding 24 configurables | 73 to 63 | 397 ms to 433 ms |
+| Configurable product page | 87 to 87 | 322 ms to 305 ms |
+
+The statement counts were identical in every round. The wall times overlap across rounds on a machine doing other work, so they show no measurable change either way. Rendered listings were identical with the switch off and on once request-varying values were removed; the product page varies between two requests with the switch in the same position, so it can't be compared that way.

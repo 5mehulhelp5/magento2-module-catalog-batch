@@ -5,6 +5,7 @@
         <kingletas_catalog_batch>
             <general>
                 <enabled>0</enabled>
+                <salable_children>0</salable_children>
                 <batch_size>100</batch_size>
             </general>
         </kingletas_catalog_batch>

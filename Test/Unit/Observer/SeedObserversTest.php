@@ -11,6 +11,7 @@ namespace Kingletas\CatalogBatch\Test\Unit\Observer;
 
 use Kingletas\CatalogBatch\Model\Config;
 use Kingletas\CatalogBatch\Model\PendingConfigurables;
+use Kingletas\CatalogBatch\Model\Salability\SalableChildCounter;
 use Kingletas\CatalogBatch\Observer\SeedListingConfigurables;
 use Kingletas\CatalogBatch\Observer\SeedViewedConfigurable;
 use Magento\Catalog\Model\Product;
@@ -26,9 +27,36 @@ class SeedObserversTest extends TestCase
 {
     private PendingConfigurables $pending;
 
+    /** @var list<array{0: int[], 1: int}> Product ids and store id each listing was noted with. */
+    private array $counted = [];
+
     protected function setUp(): void
     {
         $this->pending = new PendingConfigurables();
+    }
+
+    public function testAListingIsNotedForTheSalableCountWithItsStore(): void
+    {
+        $collection = $this->createMock(Collection::class);
+        $collection->method('getItems')->willReturn([1 => $this->configurable(7), 2 => $this->configurable(8)]);
+
+        $this->listingObserver()->execute($this->observer(['collection' => $collection]));
+
+        $this->assertSame([[[7, 8], 3]], $this->counted);
+    }
+
+    /**
+     * The salable count has its own switch, so a listing is noted for it even when attribute batching is off.
+     */
+    public function testTheSalableCountDoesNotDependOnTheAttributeSwitch(): void
+    {
+        $collection = $this->createMock(Collection::class);
+        $collection->method('getItems')->willReturn([1 => $this->configurable(7)]);
+
+        $this->listingObserver(false)->execute($this->observer(['collection' => $collection]));
+
+        $this->assertNull($this->pending->takeGroupOf(7));
+        $this->assertSame([[[7], 3]], $this->counted);
     }
 
     /**
@@ -65,6 +93,7 @@ class SeedObserversTest extends TestCase
         $this->listingObserver()->execute($this->observer(['collection' => new DataObject()]));
 
         $this->assertNull($this->pending->takeGroupOf(7));
+        $this->assertSame([], $this->counted);
     }
 
     public function testAProductPageRemembersTheOneProductItIsShowing(): void
@@ -91,7 +120,15 @@ class SeedObserversTest extends TestCase
 
     private function listingObserver(bool $enabled = true): SeedListingConfigurables
     {
-        return new SeedListingConfigurables($this->config($enabled), $this->pending, $this->stores());
+        $counter = $this->createMock(SalableChildCounter::class);
+        $counter->method('remember')->willReturnCallback(function (array $products, int $storeId): void {
+            $this->counted[] = [
+                array_map(static fn (Product $product): int => (int) $product->getId(), $products),
+                $storeId,
+            ];
+        });
+
+        return new SeedListingConfigurables($this->config($enabled), $this->pending, $this->stores(), $counter);
     }
 
     private function viewObserver(bool $enabled = true): SeedViewedConfigurable

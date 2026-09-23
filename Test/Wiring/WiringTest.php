@@ -45,7 +45,7 @@ class WiringTest extends TestCase
         $defaults = simplexml_load_file($this->root() . '/etc/config.xml');
         $this->assertNotFalse($defaults);
 
-        foreach (['enabled', 'batch_size'] as $field) {
+        foreach (['enabled', 'salable_children', 'batch_size'] as $field) {
             $this->assertNotEmpty(
                 $defaults->xpath('/config/default/kingletas_catalog_batch/general/' . $field) ?: [],
                 $field . ' has no default in config.xml'
@@ -63,16 +63,46 @@ class WiringTest extends TestCase
             $system->xpath('//section[@id="kingletas_catalog_batch"]//field') ?: []
         );
 
-        $this->assertSame(['enabled', 'batch_size'], $ids);
+        $this->assertSame(['enabled', 'salable_children', 'batch_size'], $ids);
     }
 
-    public function testTheSwitchIsOffOnInstall(): void
+    public function testBothSwitchesAreOffOnInstall(): void
     {
         $defaults = simplexml_load_file($this->root() . '/etc/config.xml');
         $this->assertNotFalse($defaults);
-        $enabled = $defaults->xpath('/config/default/kingletas_catalog_batch/general/enabled') ?: [];
 
-        $this->assertSame('0', (string) reset($enabled));
+        foreach (['enabled', 'salable_children'] as $field) {
+            $value = $defaults->xpath('/config/default/kingletas_catalog_batch/general/' . $field) ?: [];
+            $this->assertSame('0', (string) reset($value), $field . ' is not off on install');
+        }
+    }
+
+    /**
+     * The salable count reaches Magento through two constructor arguments of the type model, never a plugin.
+     */
+    public function testTheSalableCountIsWiredAsArgumentsOfTheTypeModel(): void
+    {
+        $config = simplexml_load_file($this->root() . '/etc/frontend/di.xml');
+        $this->assertNotFalse($config);
+        $type = 'Magento\\ConfigurableProduct\\Model\\Product\\Type\\Configurable';
+        $arguments = [];
+
+        foreach ($config->xpath('//type[@name="' . $type . '"]/arguments/argument') ?: [] as $argument) {
+            $arguments[(string) $argument['name']] = trim((string) $argument);
+        }
+
+        $this->assertSame(
+            'Kingletas\\CatalogBatch\\Model\\Salability\\CountingSalableProcessor',
+            $arguments['salableProcessor'] ?? null
+        );
+        $factory = $arguments['productCollectionFactory'] ?? '';
+        $virtual = $config->xpath('//virtualType[@name="' . $factory . '"]/arguments/argument[@name="instanceName"]');
+        $this->assertSame(
+            'Kingletas\\CatalogBatch\\Model\\Salability\\CountedChildCollection',
+            trim((string) ($virtual[0] ?? ''))
+        );
+        $this->assertTrue(class_exists(trim((string) ($virtual[0] ?? ''))));
+        $this->assertSame([], $config->xpath('//plugin[contains(@type, "Salab")]') ?: []);
     }
 
     public function testTheConfigClassReadsTheSectionTheXmlDeclares(): void
@@ -81,6 +111,31 @@ class WiringTest extends TestCase
 
         $this->assertIsString($source);
         $this->assertStringContainsString("SECTION = 'kingletas_catalog_batch'", $source);
+    }
+
+    /**
+     * The status command is the only thing wired outside the frontend, and its Proxy is generated from a real class.
+     */
+    public function testEveryClassTheGlobalDiFileNamesExists(): void
+    {
+        $config = simplexml_load_file($this->root() . '/etc/di.xml');
+        $this->assertNotFalse($config);
+
+        $types = $config->xpath('//type') ?: [];
+        $objects = $config->xpath('//*[@xsi:type="object"]') ?: [];
+        $names = array_merge(
+            array_map(static fn (SimpleXMLElement $type): string => (string) $type['name'], $types),
+            array_map(static fn (SimpleXMLElement $item): string => trim((string) $item), $objects)
+        );
+
+        $this->assertNotEmpty($names);
+
+        foreach ($names as $class) {
+            $this->assertTrue(
+                class_exists($class) || interface_exists($class),
+                $class . ' is named in di.xml and does not exist'
+            );
+        }
     }
 
     /**

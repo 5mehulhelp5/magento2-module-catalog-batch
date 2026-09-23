@@ -1,9 +1,24 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <!-- Only the storefront asks for these, and only when a page actually renders a configurable's swatches. -->
+    <!-- Only the storefront asks for these. Sorted after the catalog index module's plugin, so it answers what a document did not. -->
     <type name="Magento\ConfigurableProduct\Model\Product\Type\Configurable">
         <plugin name="kingletas_catalog_batch_seed_attributes_on_demand"
-                type="Kingletas\CatalogBatch\Plugin\Configurable\SeedAttributesOnDemand"/>
+                type="Kingletas\CatalogBatch\Plugin\Configurable\SeedAttributesOnDemand"
+                sortOrder="20"/>
+    </type>
+
+    <!-- Arguments rather than plugins: the type model counts children through these two, which answer from the page count. -->
+    <virtualType name="Kingletas\CatalogBatch\Model\Salability\CountedChildCollectionFactory"
+                 type="Magento\ConfigurableProduct\Model\ResourceModel\Product\Type\Configurable\Product\CollectionFactory">
+        <arguments>
+            <argument name="instanceName" xsi:type="string">Kingletas\CatalogBatch\Model\Salability\CountedChildCollection</argument>
+        </arguments>
+    </virtualType>
+    <type name="Magento\ConfigurableProduct\Model\Product\Type\Configurable">
+        <arguments>
+            <argument name="productCollectionFactory" xsi:type="object">Kingletas\CatalogBatch\Model\Salability\CountedChildCollectionFactory</argument>
+            <argument name="salableProcessor" xsi:type="object">Kingletas\CatalogBatch\Model\Salability\CountingSalableProcessor</argument>
+        </arguments>
     </type>
 </config>

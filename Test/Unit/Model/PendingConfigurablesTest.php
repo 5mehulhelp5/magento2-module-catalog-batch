@@ -62,6 +62,46 @@ class PendingConfigurablesTest extends TestCase
         $this->assertNull($pending->takeGroupOf(6));
     }
 
+    /**
+     * Another plugin answered five, so the group no longer holds it and six is still answered with the rest.
+     */
+    public function testAReleasedProductLeavesItsGroup(): void
+    {
+        $pending = new PendingConfigurables();
+        $pending->remember([$this->product(5), $this->product(6)], 1, 2);
+
+        $this->assertTrue($pending->release(5));
+        $group = $pending->takeGroupOf(6);
+
+        $this->assertSame([6], array_keys($group->products ?? []));
+        $this->assertSame([1, 2], [$group?->storeId, $group?->websiteId]);
+    }
+
+    public function testAGroupWhoseProductsAreAllReleasedIsDropped(): void
+    {
+        $pending = new PendingConfigurables();
+        $pending->remember([$this->product(5), $this->product(6)], 1, 1);
+
+        $pending->release(5);
+        $pending->release(6);
+
+        $this->assertNull($pending->takeGroupOf(5));
+        $this->assertNull($pending->takeGroupOf(6));
+    }
+
+    /**
+     * Only a product this module was still holding counts, so one it already answered or never saw does not.
+     */
+    public function testReleasingAProductThatIsNotHeldSaysSo(): void
+    {
+        $pending = new PendingConfigurables();
+        $pending->remember([$this->product(5)], 1, 1);
+        $pending->takeGroupOf(5);
+
+        $this->assertFalse($pending->release(5));
+        $this->assertFalse($pending->release(9));
+    }
+
     public function testAProductNobodyRememberedHasNoGroup(): void
     {
         $this->assertNull((new PendingConfigurables())->takeGroupOf(5));

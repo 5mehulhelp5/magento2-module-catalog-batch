@@ -10,7 +10,7 @@
         }
     ],
     "require": {
-        "php": ">=8.4",
+        "php": "^8.3",
         "magento/framework": ">=103.0",
         "magento/module-catalog": ">=104.0",
         "magento/module-configurable-product": ">=100.4"
@@ -20,7 +20,7 @@
         "phpcompatibility/php-compatibility": "^9.3",
         "phpmd/phpmd": "^2.15",
         "phpstan/phpstan": "^2.0",
-        "phpunit/phpunit": "^10.5 || ^11.0",
+        "phpunit/phpunit": "^10.5",
         "slevomat/coding-standard": "^8.15"
     },
     "autoload": {
@@ -48,7 +48,7 @@
         "cs": "phpcs --standard=phpcs.xml.dist",
         "cs-fix": "phpcbf --standard=phpcs.xml.dist",
         "stan": "phpstan analyse --configuration phpstan.neon.dist --no-progress",
-        "md": "phpmd Model,Observer,Plugin text phpmd.xml.dist",
+        "md": "phpmd Console,Model,Observer,Plugin text phpmd.xml.dist",
         "test": "phpunit --configuration phpunit.xml.dist",
         "test-behaviour": "phpunit --configuration phpunit.xml.dist --testsuite behaviour",
         "test-performance": "phpunit --configuration phpunit.xml.dist --testsuite performance",

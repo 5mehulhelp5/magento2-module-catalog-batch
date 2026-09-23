@@ -4,11 +4,15 @@
 # allowed to pass vacuously.
 parameters:
     level: 6
+    phpVersion:
+        min: 80300
+        max: 80499
     # Registers the on-demand generator, so a Factory that only exists
     # after `setup:di:compile` resolves here too.
     bootstrapFiles:
         - Test/generated-classes.php
     paths:
+        - Console
         - Model
         - Observer
         - Plugin

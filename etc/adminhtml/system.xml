@@ -20,6 +20,12 @@
                     <comment>Asks for every configurable product's attribute rows, labels and options once per page instead of once per product. Reads the same tables Magento reads and stores nothing.</comment>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
+                <field id="salable_children" translate="label comment" type="select" sortOrder="15"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Batch The Salable Child Count</label>
+                    <comment>Works out whether each configurable in a listing has a child anyone can buy, for the whole page at once instead of one query per product. Magento's own filters still decide which children count, so whichever inventory module is installed still applies.</comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
                 <field id="batch_size" translate="label comment" type="text" sortOrder="20" showInDefault="1"
                        canRestore="1">
                     <label>Products Per Query</label>

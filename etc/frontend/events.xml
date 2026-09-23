@@ -1,6 +1,10 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="controller_front_send_response_before">
+        <observer name="kingletas_catalog_batch_flush_answer_tally"
+                  instance="Kingletas\CatalogBatch\Observer\FlushAnswerTally"/>
+    </event>
     <event name="catalog_product_collection_load_after">
         <observer name="kingletas_catalog_batch_seed_listing"
                   instance="Kingletas\CatalogBatch\Observer\SeedListingConfigurables"/>

@@ -11,6 +11,7 @@ namespace Kingletas\CatalogBatch\Plugin\Configurable;
 
 use Kingletas\CatalogBatch\Model\AttributeCollectionSeeder;
 use Kingletas\CatalogBatch\Model\PendingConfigurables;
+use Kingletas\CatalogBatch\Model\Status\AnswerTally;
 use Magento\Catalog\Model\Product;
 use Magento\ConfigurableProduct\Model\Product\Type\Configurable;
 
@@ -21,7 +22,8 @@ class SeedAttributesOnDemand
 {
     public function __construct(
         private readonly PendingConfigurables $pending,
-        private readonly AttributeCollectionSeeder $seeder
+        private readonly AttributeCollectionSeeder $seeder,
+        private readonly AnswerTally $tally
     ) {
     }
 
@@ -35,7 +37,13 @@ class SeedAttributesOnDemand
     {
         $id = (int) $product->getId();
 
-        if ($id === 0 || $product->hasData(AttributeCollectionSeeder::CONFIGURABLE_ATTRIBUTES)) {
+        if ($id === 0) {
+            return null;
+        }
+
+        if ($product->hasData(AttributeCollectionSeeder::CONFIGURABLE_ATTRIBUTES)) {
+            $this->release($id);
+
             return null;
         }
 
@@ -45,10 +53,22 @@ class SeedAttributesOnDemand
             return null;
         }
 
-        $this->seeder->seed(array_values($group->products), $group->storeId, $group->websiteId);
+        $this->tally->answered(
+            $this->seeder->seed(array_values($group->products), $group->storeId, $group->websiteId)
+        );
         $this->copyFromTwin($product, $group->products[$id] ?? null);
 
         return null;
+    }
+
+    /**
+     * A plugin sorted earlier answered a product this module was holding, so it is let go and counted as pre-empted.
+     */
+    private function release(int $id): void
+    {
+        if ($this->pending->release($id)) {
+            $this->tally->preempted();
+        }
     }
 
     /**

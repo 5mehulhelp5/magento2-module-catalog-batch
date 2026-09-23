@@ -11,6 +11,7 @@ namespace Kingletas\CatalogBatch\Observer;
 
 use Kingletas\CatalogBatch\Model\PendingConfigurables;
 use Kingletas\CatalogBatch\Model\Config;
+use Kingletas\CatalogBatch\Model\Salability\SalableChildCounter;
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ResourceModel\Product\Collection;
 use Magento\Framework\DataObject;
@@ -19,14 +20,15 @@ use Magento\Framework\Event\ObserverInterface;
 use Magento\Store\Model\StoreManagerInterface;
 
 /**
- * Notes the configurables a just-loaded collection holds, so they can be answered together if the page asks about one.
+ * Notes the configurables a just-loaded collection holds, so each question about them can be answered for the page.
  */
 class SeedListingConfigurables implements ObserverInterface
 {
     public function __construct(
         private readonly Config $config,
         private readonly PendingConfigurables $pending,
-        private readonly StoreManagerInterface $storeManager
+        private readonly StoreManagerInterface $storeManager,
+        private readonly SalableChildCounter $salableCounter
     ) {
     }
 
@@ -42,12 +44,13 @@ class SeedListingConfigurables implements ObserverInterface
         }
 
         $store = $this->storeManager->getStore();
+        $storeId = (int) $store->getId();
 
-        if (!$this->config->isEnabled((int) $store->getId())) {
-            return;
+        if ($this->config->isEnabled($storeId)) {
+            $this->pending->remember($this->products($collection), $storeId, (int) $store->getWebsiteId());
         }
 
-        $this->pending->remember($this->products($collection), (int) $store->getId(), (int) $store->getWebsiteId());
+        $this->salableCounter->remember($this->products($collection), $storeId);
     }
 
     /**

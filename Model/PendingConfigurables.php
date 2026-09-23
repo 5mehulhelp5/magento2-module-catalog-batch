@@ -77,4 +77,44 @@ class PendingConfigurables
 
         return $pending;
     }
+
+    /**
+     * Lets go of a product another plugin already answered, and says whether this module was still holding it.
+     */
+    public function release(int $entityId): bool
+    {
+        $group = $this->groupOf[$entityId] ?? null;
+
+        if ($group === null) {
+            return false;
+        }
+
+        unset($this->groupOf[$entityId]);
+        $this->removeFromGroup($group, $entityId);
+
+        return true;
+    }
+
+    /**
+     * A group left with no products is dropped, so a page the other plugin answered in full holds nothing here.
+     */
+    private function removeFromGroup(int $group, int $entityId): void
+    {
+        $pending = $this->groups[$group] ?? null;
+
+        if ($pending === null) {
+            return;
+        }
+
+        $products = $pending->products;
+        unset($products[$entityId]);
+
+        if ($products === []) {
+            unset($this->groups[$group]);
+
+            return;
+        }
+
+        $this->groups[$group] = new PendingGroup($products, $pending->storeId, $pending->websiteId);
+    }
 }

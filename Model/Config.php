@@ -30,6 +30,14 @@ class Config
     }
 
     /**
+     * Whether a listing's salable-child counts are worked out for the page at once, which has its own switch.
+     */
+    public function isSalabilityEnabled(int $storeId): bool
+    {
+        return $this->isSetFlag('general/salable_children', $storeId);
+    }
+
+    /**
      * A page with more configurables than this is batched in chunks, so one query never grows without a bound.
      */
     public function getBatchSize(): int

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <!-- The command name is wiring, and every bin/magento run builds the command, so its storage is proxied. -->
+    <type name="Kingletas\CatalogBatch\Console\Command\StatusCommand">
+        <arguments>
+            <argument name="name" xsi:type="string">kingletas:catalog-batch:status</argument>
+            <argument name="history" xsi:type="object">Kingletas\CatalogBatch\Model\Status\AnswerHistory\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="kingletas_catalog_batch_status" xsi:type="object">Kingletas\CatalogBatch\Console\Command\StatusCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>
