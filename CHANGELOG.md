@@ -2,6 +2,12 @@
 
 All notable changes to this module are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- The install section added `repo.magento.com` beside the package feed, which stops `composer require` with a 401 on a Mage-OS store that has no keys for it. It now adds only the feed, beside the repository the store already uses, with one `composer config` command instead of a hand-edited block.
+
 ## 1.0.0 - 2026-09-23
 
 ### Added
